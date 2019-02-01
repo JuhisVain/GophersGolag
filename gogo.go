@@ -94,20 +94,19 @@ func move_gopher(field *Playarea, dx, dy int) {
 	case WORM:
 		field.gopher.x += dx
 		field.gopher.y += dy
-		*tile_at(field, field.gopher.x+dx, field.gopher.y+dy) = EMPTY
+		*tile_at(field, field.gopher.x, field.gopher.y) = EMPTY
 		field.gopher.score += 100
 		return
 	case LIVE_WEASEL: // suicide
 		//todo: DEATH
 		field.gopher.score += -100
 		return
-	default:
-		if push_block( // what the f are these indent rules...
-			field,field.gopher.x+dx,field.gopher.y+dy,dx, dy,
+	case BLOCK:
+		if push_block(
+			field,field.gopher.x,field.gopher.y,dx, dy,
 			*tile_at(field,field.gopher.x,field.gopher.y)) {
 				//beautiful
 				move_gopher(field, dx, dy)
-				*tile_at(field, field.gopher.x+dx, field.gopher.y+dy) = EMPTY
 			}
 		
 	}
@@ -115,17 +114,22 @@ func move_gopher(field *Playarea, dx, dy int) {
 }
 
 func push_block(f *Playarea, x, y, dx, dy int, source_block_type int8) bool {
-	switch *tile_at(f, x+dx, y+dy) {
-	case EMPTY, WORM:
-		*tile_at(f, x+dx, y+dy) = source_block_type
-		return true
-	case BLOCK:
-		return push_block(f, x+dx, y+dy, dx, dy, BLOCK)
-	case WALL:
-		return false
-	}
-	return false // temp
+
+	push_success := false
 	
+	switch *tile_at(f, x+dx, y+dy) {
+	case BLOCK:
+		push_success = push_block(f, x+dx, y+dy, dx, dy, *tile_at(f, x+dx, y+dy))
+	case EMPTY, WORM:
+		push_success = true
+	case WALL:
+		push_success = false
+	}
+
+	if push_success {
+		*tile_at(f, x+dx, y+dy) = source_block_type
+	}
+	return push_success
 }
 
 func init_field(width, height int) *Playarea{
