@@ -131,16 +131,11 @@ func push_block(f *Playarea, x, y, dx, dy int, source_block_type int8) bool {
 
 	push_success := false
 
-	if check_weasels(f.weasel_list,
-		func(weasel *Weasel)bool{
-			if weasel.x == x+dx && weasel.y == y+dy {
-				return true
-			} else {
-				return false
-			}
-		}) {
+	for weasel := f.weasel_list; weasel != nil; weasel = weasel.next {
+		if weasel.x == x+dx && weasel.y == y+dy {
 			goto after_switch
 		}
+	}
 
 	switch *tile_at(f, x+dx, y+dy) {
 	case BLOCK:
@@ -161,27 +156,21 @@ func push_block(f *Playarea, x, y, dx, dy int, source_block_type int8) bool {
 }
 
 func weasel_strategy(field *Playarea) {
-	check_weasels(
-		field.weasel_list,
-		func(weasel *Weasel)bool{
-			move_weasel(field, weasel)
-			return false // only return at end
-		})
-	// Check if all weasels are trapped:
-	if check_weasels(field.weasel_list,
-		func(weasel *Weasel)bool{
-			return !weasel.alive
-		}) {
-			// pls no
-			// turn to worms
-			check_weasels(field.weasel_list,
-				func(weasel *Weasel)bool{
-					*tile_at(field, weasel.x, weasel.y) = WORM
-					return false
-				})
-			field.weasel_list = nil // todo: spawn new weasels
+
+	live_weasels := false
+	for weasel := field.weasel_list; weasel != nil; weasel = weasel.next {
+		move_weasel(field, weasel)
+		if weasel.alive {
+			live_weasels = true
 		}
-	
+	}
+
+	if !live_weasels {
+		for weasel := field.weasel_list; weasel != nil; weasel = weasel.next {
+			*tile_at(field, weasel.x, weasel.y) = WORM
+			field.weasel_list = nil
+		}
+	}
 }
 
 func move_weasel(field *Playarea, weasel *Weasel) {
@@ -238,30 +227,21 @@ func move_weasel(field *Playarea, weasel *Weasel) {
 }
 
 func tile_free_for_weasel(field *Playarea, x, y int)bool{
-	if *tile_at(field, x, y) == EMPTY &&
-		!check_weasels(field.weasel_list,
-		func(weasel *Weasel)bool{ if weasel.x == x && weasel.y == y {
-			return true
-		}
-			return false
-		}) { // note to self: stay procedural in the future
-			return true
-		}
-	return false
-}
 
-// Returns true immediately when argument function returns true on some weasel
-func check_weasels(weasel *Weasel, function func(weasel *Weasel)bool)bool {
-	
-	if weasel == nil {
+	if *tile_at(field, x, y) == EMPTY && weasel_here(field, x, y) == nil {
+		return true
+	} else {
 		return false
 	}
-	retval := function(weasel)
-	if retval {
-		return retval
-	} else {
-		return check_weasels(weasel.next, function)
+}
+
+func weasel_here(field *Playarea, x, y int) *Weasel {
+	for weasel := field.weasel_list; weasel != nil; weasel = weasel.next {
+		if weasel.x == x && weasel.y == y {
+			return weasel
+		}
 	}
+	return nil
 }
 
 func init_field(width, height int) *Playarea{
