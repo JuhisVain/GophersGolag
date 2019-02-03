@@ -4,6 +4,7 @@ import
 (
 	"github.com/rthornton128/goncurses"
 	"log"
+	"time"
 )
 
 const WALL int8 = 61   // =
@@ -52,6 +53,15 @@ func main() {
 	area_h := 23
 	field := init_field(area_w, area_h)
 	form_level(field, 1)
+
+	ticker := time.NewTicker(1000 * time.Millisecond)
+	go func() {
+		for ti := range ticker.C {
+			stdscr.MovePrint(3, 25, ti)
+			weasel_strategy(field)
+			draw_field(stdscr, field)
+		}
+	}()
 
 	for {
 
@@ -150,7 +160,99 @@ func push_block(f *Playarea, x, y, dx, dy int, source_block_type int8) bool {
 	return push_success
 }
 
+func weasel_strategy(field *Playarea) {
+	check_weasels(
+		field.weasel_list,
+		func(weasel *Weasel)bool{
+			move_weasel(field, weasel)
+			return false // only return at end
+		})
+	// Check if all weasels are trapped:
+	if check_weasels(field.weasel_list,
+		func(weasel *Weasel)bool{
+			return !weasel.alive
+		}) {
+			// pls no
+			// turn to worms
+			check_weasels(field.weasel_list,
+				func(weasel *Weasel)bool{
+					*tile_at(field, weasel.x, weasel.y) = WORM
+					return false
+				})
+			field.weasel_list = nil // todo: spawn new weasels
+		}
+	
+}
+
+func move_weasel(field *Playarea, weasel *Weasel) {
+	//Where's the gopher?
+	gx := field.gopher.x
+	gy := field.gopher.y
+	//Where does the weasel want to step to?
+	dx := 0
+	dy := 0
+	
+	if gx > weasel.x {
+		dx++
+	} else if gx < weasel.x {
+		dx--
+	}
+	if gy > weasel.y {
+		dy++
+	} else if gy < weasel.y {
+		dy--
+	}
+
+	// todo: implement some sort of pseudorandomization to get out of simple holes
+	if tile_free_for_weasel(field, weasel.x+dx, weasel.y+dy){
+		weasel.x += dx
+		weasel.y += dy
+	} else if tile_free_for_weasel(field, weasel.x, weasel.y+dy){
+		weasel.y += dy
+	} else if tile_free_for_weasel(field, weasel.x+dx, weasel.y){
+		weasel.x += dx
+	} else {
+		// tiles towards gopher were untraversable:
+		// if weasel boxed in, go to sleep:
+		if dx == 0 {
+			dx = 1
+		}
+		if dy == 0 {
+			dy = 1
+		}
+		if !(   tile_free_for_weasel(field, weasel.x-dx, weasel.y-dy) ||
+			tile_free_for_weasel(field, weasel.x+dx, weasel.y) ||
+			tile_free_for_weasel(field, weasel.x, weasel.y+dy) ||
+			tile_free_for_weasel(field, weasel.x+dx, weasel.y+dy) ||
+			tile_free_for_weasel(field, weasel.x-dx, weasel.y) ||
+			tile_free_for_weasel(field, weasel.x, weasel.y-dy) ||
+			tile_free_for_weasel(field, weasel.x+dx, weasel.y-dy) ||
+			tile_free_for_weasel(field, weasel.x-dx, weasel.y+dy)) {
+
+			weasel.alive = false
+		}
+
+		
+	}
+	
+}
+
+func tile_free_for_weasel(field *Playarea, x, y int)bool{
+	if *tile_at(field, x, y) == EMPTY &&
+		!check_weasels(field.weasel_list,
+		func(weasel *Weasel)bool{ if weasel.x == x && weasel.y == y {
+			return true
+		}
+			return false
+		}) { // note to self: stay procedural in the future
+			return true
+		}
+	return false
+}
+
+// Returns true immediately when argument function returns true on some weasel
 func check_weasels(weasel *Weasel, function func(weasel *Weasel)bool)bool {
+	
 	if weasel == nil {
 		return false
 	}
