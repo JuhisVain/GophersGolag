@@ -32,6 +32,10 @@ type Weasel struct {
 }
 
 func main() {
+
+	//Check_weasel_list()
+	//return
+	
 	stdscr, err := goncurses.Init()
 
 	if err != nil {
@@ -116,7 +120,18 @@ func move_gopher(field *Playarea, dx, dy int) {
 func push_block(f *Playarea, x, y, dx, dy int, source_block_type int8) bool {
 
 	push_success := false
-	
+
+	if check_weasels(f.weasel_list,
+		func(weasel *Weasel)bool{
+			if weasel.x == x+dx && weasel.y == y+dy {
+				return true
+			} else {
+				return false
+			}
+		}) {
+			goto after_switch
+		}
+
 	switch *tile_at(f, x+dx, y+dy) {
 	case BLOCK:
 		push_success = push_block(f, x+dx, y+dy, dx, dy, *tile_at(f, x+dx, y+dy))
@@ -129,7 +144,22 @@ func push_block(f *Playarea, x, y, dx, dy int, source_block_type int8) bool {
 	if push_success {
 		*tile_at(f, x+dx, y+dy) = source_block_type
 	}
+
+	after_switch:
+	
 	return push_success
+}
+
+func check_weasels(weasel *Weasel, function func(weasel *Weasel)bool)bool {
+	if weasel == nil {
+		return false
+	}
+	retval := function(weasel)
+	if retval {
+		return retval
+	} else {
+		return check_weasels(weasel.next, function)
+	}
 }
 
 func init_field(width, height int) *Playarea{
