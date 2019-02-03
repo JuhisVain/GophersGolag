@@ -133,6 +133,10 @@ func push_block(f *Playarea, x, y, dx, dy int, source_block_type int8) bool {
 
 	for weasel := f.weasel_list; weasel != nil; weasel = weasel.next {
 		if weasel.x == x+dx && weasel.y == y+dy {
+			move_weasel(f, weasel)
+			if weasel.alive {
+				push_success = true
+			}
 			goto after_switch
 		}
 	}
@@ -145,12 +149,13 @@ func push_block(f *Playarea, x, y, dx, dy int, source_block_type int8) bool {
 	case WALL:
 		push_success = false
 	}
-
+	
+after_switch:
+	
 	if push_success {
 		*tile_at(f, x+dx, y+dy) = source_block_type
 	}
 
-	after_switch:
 	
 	return push_success
 }
@@ -182,46 +187,59 @@ func move_weasel(field *Playarea, weasel *Weasel) {
 	dy := 0
 	
 	if gx > weasel.x {
-		dx++
+		dx = 1
 	} else if gx < weasel.x {
-		dx--
+		dx = -1
 	}
 	if gy > weasel.y {
-		dy++
+		dy = 1
 	} else if gy < weasel.y {
-		dy--
+		dy = -1
 	}
 
-	// todo: implement some sort of pseudorandomization to get out of simple holes
 	if tile_free_for_weasel(field, weasel.x+dx, weasel.y+dy){
 		weasel.x += dx
 		weasel.y += dy
-	} else if tile_free_for_weasel(field, weasel.x, weasel.y+dy){
+		return
+	}
+
+	if dx == 0 {
+		dx = 1
+	} else if dy == 0 {
+		dy = 1
+	}
+
+	if tile_free_for_weasel(field, weasel.x, weasel.y+dy) {
 		weasel.y += dy
-	} else if tile_free_for_weasel(field, weasel.x+dx, weasel.y){
+		return
+	} else if tile_free_for_weasel(field, weasel.x+dx, weasel.y+dy) {
 		weasel.x += dx
+		weasel.y += dy
+		return
+	} else if tile_free_for_weasel(field, weasel.x-dx, weasel.y+dy) {
+		weasel.x -= dx
+		weasel.y += dy
+		return
+	} else if tile_free_for_weasel(field, weasel.x+dx, weasel.y) {
+		weasel.x += dx
+		return
+	} else if tile_free_for_weasel(field, weasel.x+dx, weasel.y-dy) {
+		weasel.x += dx
+		weasel.y -= dy
+		return
+	} else if tile_free_for_weasel(field, weasel.x, weasel.y-dy) {
+		weasel.y -= dy
+		return
+	} else if tile_free_for_weasel(field, weasel.x-dx, weasel.y) {
+		weasel.x -= dx
+		return
+	} else if tile_free_for_weasel(field, weasel.x-dx, weasel.y-dy) {
+		weasel.x -= dx
+		weasel.y -= dy
+		return
 	} else {
-		// tiles towards gopher were untraversable:
-		// if weasel boxed in, go to sleep:
-		if dx == 0 {
-			dx = 1
-		}
-		if dy == 0 {
-			dy = 1
-		}
-		if !(   tile_free_for_weasel(field, weasel.x-dx, weasel.y-dy) ||
-			tile_free_for_weasel(field, weasel.x+dx, weasel.y) ||
-			tile_free_for_weasel(field, weasel.x, weasel.y+dy) ||
-			tile_free_for_weasel(field, weasel.x+dx, weasel.y+dy) ||
-			tile_free_for_weasel(field, weasel.x-dx, weasel.y) ||
-			tile_free_for_weasel(field, weasel.x, weasel.y-dy) ||
-			tile_free_for_weasel(field, weasel.x+dx, weasel.y-dy) ||
-			tile_free_for_weasel(field, weasel.x-dx, weasel.y+dy)) {
-
-			weasel.alive = false
-		}
-
-		
+		weasel.alive = false
+		return
 	}
 	
 }
@@ -250,7 +268,7 @@ func init_field(width, height int) *Playarea{
 		height,
 		make([]int8, width*height),
 		Gopher{width/2, width/2, 0},
-		&Weasel{2, 2, true, nil}}
+		&Weasel{2, 2, true, &Weasel{21,21,true,nil}}}
 
 	return field
 
