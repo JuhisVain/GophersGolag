@@ -313,8 +313,8 @@ func form_level(field *Playarea, level_index int) {
 	if (level_index != 1) {return} // escape for now
 
 	// Fill insides with a square of blocks
-	for y := 3; y < field.height-3; y++ {
-		for x := 3; x < field.width-3; x++ {
+	for y := 4; y < field.height-4; y++ {
+		for x := 4; x < field.width-4; x++ {
 			*tile_at(field,x,y) = BLOCK
 		}
 	}
