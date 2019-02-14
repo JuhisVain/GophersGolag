@@ -189,6 +189,9 @@ func weasel_strategy(field *Playarea) {
 }
 
 func move_weasel(field *Playarea, weasel *Weasel) {
+
+	weasel.alive = true
+	
 	//Where's the gopher?
 	gx := field.gopher.x
 	gy := field.gopher.y
