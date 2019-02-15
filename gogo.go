@@ -18,6 +18,7 @@ const WORM int8 = 38 // &
 type Playarea struct {
 	width, height int
 	area []int8
+	level_index int
 	gopher Gopher
 	weasel_list *Weasel
 	weasel_spawn_queue *Weasel_set_list
@@ -82,7 +83,6 @@ func main() {
 		
 	}
 
-	//stdscr.GetChar() // wait for input	
 }
 
 func tile_at(field *Playarea, x, y int) *int8{
@@ -179,12 +179,17 @@ func weasel_strategy(field *Playarea) {
 	if !live_weasels {
 		for weasel := field.weasel_list; weasel != nil; weasel = weasel.next {
 			*tile_at(field, weasel.x, weasel.y) = WORM
+		}
 
-			//TODO: Check that weasels can spawn where they are set to spawn
+		//TODO: Check that weasels can spawn where they are set to spawn
+		
+		if field.weasel_spawn_queue != nil && field.weasel_spawn_queue.weasel_set_head != nil {
 			field.weasel_list = field.weasel_spawn_queue.weasel_set_head
 			field.weasel_spawn_queue = field.weasel_spawn_queue.next
-			
+		} else {
+			form_level(field, field.level_index+1)
 		}
+		
 	}
 }
 
@@ -279,6 +284,7 @@ func init_field(width, height int) *Playarea{
 		width,
 		height,
 		make([]int8, width*height),
+		1, // level index
 		Gopher{0,0,0}, // Dummy gopher, to be overwritten
 		nil,
 		nil}
@@ -324,7 +330,7 @@ func form_level(field *Playarea, level_index int) {
 	for y := 0; y < field.height; y++ {*tile_at(field,field.width-1,y) = WALL}
 
 	if (level_index == 1) {
-
+		field.level_index = 1
 		// Fill insides with a square of blocks
 		for y := 4; y < field.height-4; y++ {
 			for x := 4; x < field.width-4; x++ {
@@ -338,5 +344,21 @@ func form_level(field *Playarea, level_index int) {
 			&Weasel{2,2,true,
 				&Weasel{field.width-2,field.height-2,true,nil}},
 			nil}
+	} else if (level_index == 2) {
+		field.level_index = 2
+		for y := 4; y < field.height-4; y++ {
+			for x := 4+(y%2); x < field.width-4; x += 2 {
+				*tile_at(field,x,y) = BLOCK
+			}
+		}
+		*tile_at(field, field.width/2, field.height/2) = EMPTY // Gopher's start
+		field.gopher = Gopher{field.width/2, field.height/2, 0}
+		field.weasel_list = &Weasel{2,2,true,nil}
+		field.weasel_spawn_queue = &Weasel_set_list{
+			&Weasel{2,2,true,
+				&Weasel{field.width-2,field.height-2,true,nil}},
+			nil}
+	} else {
+		//end game
 	}
 }
