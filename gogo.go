@@ -71,9 +71,8 @@ func main() {
 	}()
 
 	for {
-
-		stdscr.MoveAddChar(0, 25, goncurses.Char(48+field.gopher.x))
-		stdscr.MoveAddChar(1, 25, goncurses.Char(48+field.gopher.y))
+		stdscr.MovePrintf(0, field.width+2, "%02d,%02d", field.gopher.x, field.gopher.y)
+		stdscr.MovePrintf(1, field.width+2, "Score : %04d", field.gopher.score,)
 		
 		draw_field(stdscr, field)
 		goncurses.Update()
